@@ -3,17 +3,33 @@ on: [push, pull_request]
 name: CI
 
 jobs:
-  test-stable-ubuntu:
-    name: Test Suite | Ubuntu (Stable)
+  test:
+    name: Rust ${{matrix.rust}}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [nightly, beta, stable, 1.83.0]
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
+          toolchain: ${{matrix.rust}}
+          components: rust-src
+      - run: cargo test --all-features
+      - run: cargo test --no-default-features
+      - run: cargo check --all-features
+      - run: cargo check --no-default-features
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
         with:
-          command: test
-          args: --all
+          components: clippy, rust-src
+      - run: cargo clippy --tests -- -Dclippy::all -Dclippy::pedantic

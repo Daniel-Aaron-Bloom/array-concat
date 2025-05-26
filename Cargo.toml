@@ -1,7 +1,7 @@
 [package]
 name = "array-concat"
-version = "0.5.5"
-authors = ["inspier <devdevin541@gmail.com>"]
+version = "0.5.6"
+authors = ["inspier <devdevin541@gmail.com>", "Daniel Bloom"]
 edition = "2018"
 description = "Macros for concatenating const arrays."
 repository = "https://github.com/inspier/array-concat"
@@ -9,6 +9,7 @@ license = "MIT"
 keywords = ["array", "concat", "split"]
 categories = ["data-structures", "no-std"]
 readme = "README.md"
+rust-version = "1.83"
 
 [features]
 const_panic = []

@@ -3,15 +3,17 @@
 /// Computes total size of all provided const arrays.
 #[macro_export]
 macro_rules! concat_arrays_size {
-    ($( $array:expr ),*) => {{
-        0 $(+ $array.len())*
+    () => { 0 };
+    ($( $array:expr ),+ $(,)?) => {{
+        0 $(+ $array.len())+
     }};
 }
 
 /// Concatenates provided arrays.
 #[macro_export]
 macro_rules! concat_arrays {
-    ($( $array:expr ),*) => ({
+    () => { [] };
+    ($( $array:expr ),+ $(,)?) => ({
         #[repr(C)]
         struct ArrayConcatDecomposed<T, A, B>(core::mem::ManuallyDrop<[T; 0]>, core::mem::ManuallyDrop<A>, core::mem::ManuallyDrop<B>);
 
@@ -39,6 +41,7 @@ macro_rules! concat_arrays {
         }
 
         impl<T, A, B, const N: usize> ArrayConcatComposed<T, A, B, N> {
+            #[allow(clippy::used_underscore_items)]
             const PANIC: bool = $crate::_const_assert_same_size::<[T; N], Self>();
 
             #[inline(always)]
@@ -91,8 +94,8 @@ macro_rules! flatten_split {
 /// Split the provided array into the specified sizes.
 #[macro_export]
 macro_rules! split_array {
-    ($array:expr, $size:expr) => ($array);
-    ($array:expr, $size0:expr, $($sizes:expr),+) => ({
+    ($array:expr, $size:expr $(,)?) => ($array);
+    ($array:expr, $size0:expr, $($sizes:expr),+ $(,)?) => ({
         struct ArrayConcatDecomposedMarkerBase<T, A>(core::marker::PhantomData<(T, A)>);
         struct ArrayConcatDecomposedMarker<T, A, B>(core::marker::PhantomData<(T, A, B)>);
 
@@ -141,6 +144,7 @@ macro_rules! split_array {
                 }
 
                 impl<T, A, B, const N: usize> ArrayConcatComposed<T, A, B, N> {
+                    #[allow(clippy::used_underscore_items)]
                     const PANIC: bool = $crate::_const_assert_same_size::<[T; N], Self>();
 
                     #[inline(always)]
@@ -176,6 +180,8 @@ macro_rules! split_array {
 ///
 /// This is an implementation detail of the crate and should only be used by the
 /// macros in this crate.
+#[allow(clippy::inline_always)]
+#[must_use]
 #[inline(always)]
 #[doc(hidden)]
 pub const fn _const_assert_same_size<A, B>() -> bool {
@@ -203,19 +209,25 @@ mod tests {
 
     #[test]
     fn test_simple_concat() {
-        let d = concat_arrays!(A, B);
         const D: [u32; concat_arrays_size!(A, B)] = concat_arrays!(A, B);
         assert_eq!([1, 2, 3, 4, 5, 6], D);
+        let d = concat_arrays!(A, B);
         assert_eq!([1, 2, 3, 4, 5, 6], d);
+        let d = concat_arrays!(A, B,);
+        assert_eq!([1, 2, 3, 4, 5, 6], d);
+        let d = concat_arrays!();
+        assert_eq!([(); 0], d);
     }
 
     #[test]
     fn test_simple_split() {
-        let d: [u32; 6] = concat_arrays!(A, B);
         const D: [u32; 6] = concat_arrays!(A, B);
-
         const A_B: ([u32; 3], [u32; 3]) = split_array!(D, A.len(), B.len());
 
+        let d: [u32; 6] = concat_arrays!(A, B);
+
+        assert_eq!(D, split_array!(D, D.len()));
+        assert_eq!(D, split_array!(D, D.len(),));
         assert_eq!((A, B), A_B);
         assert_eq!((A, B), split_array!(d, 3, 3));
         assert_eq!(([1], [2, 3, 4, 5, 6]), split_array!(d, 1, 5));
@@ -230,16 +242,16 @@ mod tests {
 
     #[test]
     fn test_different_sizes() {
-        let e = concat_arrays!(A, C);
         const E: [u32; concat_arrays_size!(A, C)] = concat_arrays!(A, C);
+        let e = concat_arrays!(A, C);
         assert_eq!([1, 2, 3, 4, 5], E);
         assert_eq!([1, 2, 3, 4, 5], e);
     }
 
     #[test]
     fn test_literal_arrays() {
-        let f = concat_arrays!(A, C, [6, 7, 8]);
         const F: [u32; concat_arrays_size!(A, C, [6, 7, 8])] = concat_arrays!(A, C, [6, 7, 8]);
+        let f = concat_arrays!(A, C, [6, 7, 8]);
         assert_eq!([1, 2, 3, 4, 5, 6, 7, 8], F);
         assert_eq!([1, 2, 3, 4, 5, 6, 7, 8], f);
     }
